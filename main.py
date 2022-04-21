@@ -5,7 +5,7 @@ pygame.init()
 
 WIDTH, HEIGHT = 1024, 576
 TDIMS = 32
-GRAVITY = -0.5
+GRAVITY = -1
 
 FPS = 60
 CLOCK = pygame.time.Clock()
@@ -28,7 +28,10 @@ def clamp(num, max, min):
 class Tile(pygame.sprite.Sprite):
     def __init__(self, x, y, width, amongus = True):
         super().__init__()
-        self.image = pygame.Surface((width, TDIMS))
+        if amongus == False:
+            self.image = pygame.Surface((width, 2))
+        else:
+            self.image = pygame.Surface((width, TDIMS))
         self.image.fill(WHITE)
         self.rect = pygame.Rect((x, y), self.image.get_size())
         self.amongus = amongus
@@ -66,16 +69,26 @@ class Player(pygame.sprite.Sprite):
     def update(self, tiles, rightclick, enemy_group):
         global new_level
         self.cooldown_counter -= 1
+        killed = False
         mouse_pos = pygame.mouse.get_pos()
+        angle = math.atan2(self.rect.centery - mouse_pos[1], self.rect.centerx - mouse_pos[0])
+        surf = pygame.Surface((4, 4))
+        surf.fill(pygame.color.Color("#FF0000"))
+        SCREEN.blit(surf, (self.rect.centerx - math.cos(angle) * 300, self.rect.centery - math.sin(angle) * 300))
         if pygame.mouse.get_pressed()[0] and self.cooldown_counter <= 0:
             angle = math.atan2(self.rect.centery - mouse_pos[1], self.rect.centerx - mouse_pos[0])
             self.rect.centerx -= math.cos(angle) * 300
             self.rect.centery -= math.sin(angle) * 300
-            self.cooldown_counter = 50
-            for e in enemy_group:
-                if abs((math.atan2(self.rect.centery - e.rect.centery, self.rect.centerx - e.rect.centerx)) - angle) <= 0.01:
-                    if math.sqrt((self.rect.centery - e.rect.centery)**2 + (self.rect.centerx - e.rect.centerx)**2) <= 300:
+            for i in range(0, 300, 10):
+                point = ((self.rect.centerx + math.cos(angle) * 300) - math.cos(angle) * i, (self.rect.centery + math.sin(angle) * 300) - math.sin(angle) * i)
+                for e in enemy_group:
+                    if e.rect.collidepoint(point):
                         e.kill()
+                        killed = True
+            if not killed:
+                self.cooldown_counter = 200
+            else:
+                self.cooldown_counter = 50
 
         keys = pygame.key.get_pressed()
 
@@ -120,10 +133,12 @@ class Player(pygame.sprite.Sprite):
         self.rect.y += round(self.yacel)
 
         self.rect.right = clamp(self.rect.right, WIDTH, 64)
-        self.rect.centery = clamp(self.rect.centery, HEIGHT, 64)
         if self.rect.right == 1024 and len(enemy_group) == 0:
             new_level = True
             self.rect.right = 64
+        if self.rect.bottom > 545:
+            self.rect.bottom = 545
+
 
     def draw(self):
         SCREEN.blit(self.image, self.rect)
@@ -136,23 +151,29 @@ def main():
     tilegroup = pygame.sprite.Group()
     enemy_group = pygame.sprite.Group()
 
-    start = [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    level = 0
+    chance = 100
+
+    font = pygame.font.Font("fonts/fourside.ttf", 75)
+    font2 = pygame.font.Font("fonts/fourside.ttf", 35)
+
+    start = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
     x, y = 0, 0
@@ -173,24 +194,42 @@ def main():
                 sys.exit()
 
         player.update(tilegroup, rightclick, enemy_group)
-        # tilegroup.update()
-
+        placeable = True
         if new_level:
+            if level == 10:
+                print(round(pygame.time.get_ticks()/1000))
+            level += 1
+            chance -= 5
             for i in tilegroup:
                 if not i.amongus:
                     i.kill()
-            for i in range(32, WIDTH, 32):
-                for j in range(32, HEIGHT, 32):
-                    if random.randint(1, 100) == 1:
-                        new_tile = Tile(i, j, 128, False)
-                        tilegroup.add(new_tile)
-                        new_enemy = Enemy(i + 128/2, j - 32)
-                        enemy_group.add(new_enemy)
+            for i in range(32, WIDTH - 128, 32):
+                for j in range(128, HEIGHT, 32):
+                    if random.randint(1, chance) == 1:
+                        for e in enemy_group:
+                            if math.sqrt((e.rect.centerx - i + 128/2) ** 2 + (e.rect.centerx - i + 128/2) ** 2) <= 100:
+                                placeable = False
+                        if placeable:
+                            new_tile = Tile(i, j, 128, False)
+                            tilegroup.add(new_tile)
+                            new_enemy = Enemy(i + 128/2, j - 32)
+                            enemy_group.add(new_enemy)
             new_level = False
 
         player.draw()
         enemy_group.draw(SCREEN)
         tilegroup.draw(SCREEN)
+        lvl_txt = font.render(str(level), 1, WHITE)
+        lvlpos = lvl_txt.get_rect()
+        lvlpos.centerx = WIDTH / 2
+        lvlpos.centery = 50
+        SCREEN.blit(lvl_txt, lvlpos)
+
+        lvl_txt = font2.render(str(round(max(0, player.cooldown_counter / 200) * 100)), 1, WHITE)
+        lvlpos = lvl_txt.get_rect()
+        lvlpos.centerx = WIDTH - 50
+        lvlpos.centery = 50
+        SCREEN.blit(lvl_txt, lvlpos)
 
         TRUE_SCREEN.blit(pygame.transform.scale(SCREEN, TRUE_SCREEN.get_size()), (0, 0))
         pygame.display.flip()
