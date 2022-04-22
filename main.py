@@ -17,6 +17,8 @@ WHITE = (255, 255, 255)
 
 new_level = False
 
+FPS = 60
+
 def clamp(num, max, min):
     if num > max:
         return max
@@ -86,9 +88,9 @@ class Player(pygame.sprite.Sprite):
                         e.kill()
                         killed = True
             if not killed:
-                self.cooldown_counter = 200
+                self.cooldown_counter = 100
             else:
-                self.cooldown_counter = 50
+                self.cooldown_counter = 20
 
         keys = pygame.key.get_pressed()
 
@@ -146,6 +148,7 @@ class Player(pygame.sprite.Sprite):
 
 def main():
     global new_level
+    global FPS
     player = Player()
 
     tilegroup = pygame.sprite.Group()
@@ -192,12 +195,21 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LSHIFT:
+                    FPS = 10
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LSHIFT:
+                    FPS = 60
+
 
         player.update(tilegroup, rightclick, enemy_group)
         placeable = True
         if new_level:
             if level == 10:
-                print(round(pygame.time.get_ticks()/1000))
+                print(round(pygame.time.get_ticks()/10)/100)
+                sys.exit()
             level += 1
             chance -= 5
             for i in tilegroup:
@@ -225,7 +237,7 @@ def main():
         lvlpos.centery = 50
         SCREEN.blit(lvl_txt, lvlpos)
 
-        lvl_txt = font2.render(str(round(max(0, player.cooldown_counter / 200) * 100)), 1, WHITE)
+        lvl_txt = font2.render(str(round(max(0, player.cooldown_counter / 100) * 100)), 1, WHITE)
         lvlpos = lvl_txt.get_rect()
         lvlpos.centerx = WIDTH - 50
         lvlpos.centery = 50
