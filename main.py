@@ -19,11 +19,20 @@ WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 
+oldtime = 0
+
 new_level = False
 
 FPS = 60
 
 lose = False
+
+def dist(p1, p2):
+    return ((p1[1]-p2[1])**2 + (p1[0]-p2[0])**2)**0.5
+
+def get_pos():
+    mosue = pygame.mouse.get_pos()
+    return (mosue[0]/(TRUE_SCREEN.get_width()/SCREEN.get_width()), mosue[1]/  (TRUE_SCREEN.get_height()/SCREEN.get_height()))
 
 def clamp(num, max, min):
     if num > max:
@@ -110,7 +119,7 @@ class Enemy(pygame.sprite.Sprite):
         if self.type == "ranged":
             angle = math.atan2(self.rect.centery - player.rect.centery, self.rect.centerx - player.rect.centerx)
             self.cooldown_counter -= 1
-            if math.dist((self.rect.centerx, self.rect.centery),
+            if dist((self.rect.centerx, self.rect.centery),
                          (player.rect.centerx, player.rect.centery)) <= 600 and self.cooldown_counter <= 0:
                 new_bullet = Enemy_Bullet(self.rect.centerx, self.rect.centery, math.cos(angle) * 5,
                                           math.sin(angle) * 5)
@@ -124,31 +133,31 @@ class Enemy(pygame.sprite.Sprite):
                     surf = pygame.Surface((4, 4))
                     surf.fill(pygame.color.Color("#FF0000"))
                     SCREEN.blit(surf,
-                                (self.rect.centerx - math.cos(self.angle) * i, self.rect.centery - math.sin(self.angle) * i))
+                                (self.rect.centerx - math.cos(self.angle) * i, self.rect.centery + math.sin(self.angle) * i))
             if self.wait == 1:
                 new_slash = Slash((self.rect.centerx, self.rect.centery), (
-                    self.rect.centerx - math.cos(self.angle) * 300, self.rect.centery - math.sin(self.angle) * 300), False)
+                    self.rect.centerx - math.cos(self.angle) * 300, self.rect.centery + math.sin(self.angle) * 300), False)
                 slash_group.add(new_slash)
                 self.rect.centerx -= math.cos(self.angle) * 300
-                self.rect.centery -= math.sin(self.angle) * 300
+                self.rect.centery += math.sin(self.angle) * 300
                 for i in range(0, 300, 10):
                     point = ((self.rect.centerx + math.cos(self.angle) * 300) - math.cos(self.angle) * i,
-                             (self.rect.centery + math.sin(self.angle) * 300) - math.sin(self.angle) * i)
+                             (self.rect.centery + math.sin(self.angle) * 300) + math.sin(self.angle) * i)
                     if player.rect.collidepoint(point):
                         player.kill()
                         lose = True
                 self.cooldown_counter = 25
             self.cooldown_counter -= 1
-            if math.dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) <= 200 and self.cooldown_counter <= 0:
+            if self.wait <= 0 and dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) <= 200 and self.cooldown_counter <= 0:
                 self.wait = 10
 
-            if player.rect.centerx < self.rect.centerx and math.dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) >= 60:
+            if player.rect.centerx < self.rect.centerx and dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) >= 60:
                 self.xacel -= self.speed
-            elif player.rect.centerx < self.rect.centerx and math.dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) <= 60:
+            elif player.rect.centerx < self.rect.centerx and dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) <= 60:
                 self.xacel += self.speed
-            if player.rect.centerx > self.rect.centerx and math.dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) >= 60:
+            if player.rect.centerx > self.rect.centerx and dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) >= 60:
                 self.xacel += self.speed
-            elif player.rect.centerx > self.rect.centerx and math.dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) <= 60:
+            elif player.rect.centerx > self.rect.centerx and dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) <= 60:
                 self.xacel -= self.speed
             if self.onground and self.rect.centery >= player.rect.centery - 10 and self.wait <= 0:
                 self.yacel -= self.jump
@@ -219,12 +228,12 @@ class Player(pygame.sprite.Sprite):
         global lose
         self.cooldown_counter -= 1
         killed = False
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = get_pos()
         angle = math.atan2(self.rect.centery - mouse_pos[1], self.rect.centerx - mouse_pos[0])
         keys = pygame.sprite.spritecollide(self, enemy_bullet_group, True)
         for k in keys:
             lose = True
-        if FPS == 10:
+        if FPS == 5:
             for i in range(0, 300, 10):
                 surf = pygame.Surface((4, 4))
                 surf.fill(pygame.color.Color("#0000FF"))
@@ -241,8 +250,8 @@ class Player(pygame.sprite.Sprite):
                     if e.rect.collidepoint(point):
                         if e.type == "shield":
                             rect = pygame.Rect(
-                                (e.rect.centerx - math.cos(e.angle) * 50, e.rect.centery - math.sin(angle) * 50),
-                                (20, 20))
+                                (e.rect.centerx - math.cos(e.angle) * 5, e.rect.centery - math.sin(angle) * 5),
+                                (3, 3))
                             if not rect.collidepoint(point):
                                 e.kill()
                                 killed = True
@@ -250,9 +259,9 @@ class Player(pygame.sprite.Sprite):
                             e.kill()
                             killed = True
             if not killed:
-                self.cooldown_counter = 100
+                self.cooldown_counter = 0
             else:
-                self.cooldown_counter = 20
+                self.cooldown_counter = 0
 
         keys = pygame.key.get_pressed()
 
@@ -311,7 +320,7 @@ class Player(pygame.sprite.Sprite):
 def main():
     global new_level
     global FPS
-    global ticks
+    global ticks, lose, oldtime
     player = Player()
 
     tilegroup = pygame.sprite.Group()
@@ -355,7 +364,10 @@ def main():
 
     while True:
         if lose:
-            sys.exit()
+            lose = False
+            oldtime += pygame.time.get_ticks()
+            main()
+            return 0
         SCREEN.fill(BLACK)
         if FPS == 60:
             ticks += 1
@@ -367,7 +379,7 @@ def main():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LSHIFT:
-                    FPS = 10
+                    FPS = 5
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LSHIFT:
@@ -381,8 +393,9 @@ def main():
             for e in enemy_bullet_group:
                 e.kill()
             if level == 10:
-                print(ticks/100)
-                sys.exit()
+                print((pygame.time.get_ticks() - oldtime)/1000)
+                oldtime = pygame.time.get_ticks()
+                main()
             level += 1
             if chance > 5:
                 chance -= 5
