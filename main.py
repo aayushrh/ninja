@@ -93,8 +93,8 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = pygame.Rect((x, y), (32, 32))
         self.image = pygame.Surface((32, 32))
         self.image.fill(RED)
-        self.type = "boss"
-        if type != "shield":
+        self.type = type
+        if type != "shield" or type != "ultra":
             self.cooldown_counter = 100
         else:
             self.cooldown_counter = 0
@@ -106,26 +106,29 @@ class Enemy(pygame.sprite.Sprite):
         self.friction = 0.9
         self.wait = 0
         self.angle = 0
+        self.bullet_cooldown_counter = 0
+        self.shieldangle = 0
+        self.shieldcooldowncounter = 0
 
     def update(self, player, tiles, slash_group, enemybulletgroup):
         global lose
         if self.type == "reg":
             pass
-        if self.type == "shield":
-            self.cooldown_counter -= 1
-            if self.cooldown_counter <= 0:
-                self.angle = (self.angle + 2 * math.pi / 250) % (math.pi * 2)
-                self.cooldown_counter = 1
-        if self.type == "ranged":
+        if self.type == "shield" or self.type == "ultra":
+            self.shieldcooldowncounter -= 1
+            if self.shieldcooldowncounter <= 0:
+                self.shieldangle = (self.angle + 2 * math.pi / 500) % (math.pi * 2)
+                self.shieldcooldowncounter = 1
+        if self.type == "ranged" or self.type == "ultra":
             angle = math.atan2(self.rect.centery - player.rect.centery, self.rect.centerx - player.rect.centerx)
-            self.cooldown_counter -= 1
+            self.bullet_cooldown_counter -= 1
             if dist((self.rect.centerx, self.rect.centery),
-                         (player.rect.centerx, player.rect.centery)) <= 600 and self.cooldown_counter <= 0:
+                         (player.rect.centerx, player.rect.centery)) <= 600 and self.bullet_cooldown_counter <= 0:
                 new_bullet = Enemy_Bullet(self.rect.centerx, self.rect.centery, math.cos(angle) * 5,
                                           math.sin(angle) * 5)
                 enemybulletgroup.add(new_bullet)
-                self.cooldown_counter = 50
-        if self.type == "boss":
+                self.bullet_cooldown_counter = 20
+        if self.type == "boss" or self.type == "ultra":
             self.wait -= 1
             self.angle = math.atan2(player.rect.centery - self.rect.centery, self.rect.centerx - player.rect.centerx)
             if self.wait > 1 and self.wait < 10:
@@ -203,7 +206,7 @@ class Enemy(pygame.sprite.Sprite):
         image = pygame.Surface((20, 20))
         image.fill(WHITE)
         img_rect = pygame.Rect(
-            (self.rect.centerx - math.cos(self.angle) * 50 - 10, self.rect.centery - math.sin(self.angle) * 50 - 10),
+            (self.rect.centerx - math.cos(self.shieldangle) * 50 - 10, self.rect.centery - math.sin(self.shieldangle) * 50 - 10),
             (20, 20))
         screen.blit(image, img_rect)
 
@@ -248,9 +251,9 @@ class Player(pygame.sprite.Sprite):
                 point = ((self.rect.centerx + math.cos(angle) * 300) - math.cos(angle) * i, (self.rect.centery + math.sin(angle) * 300) - math.sin(angle) * i)
                 for e in enemy_group:
                     if e.rect.collidepoint(point):
-                        if e.type == "shield":
+                        if e.type == "shield" or e.type == "ultra":
                             rect = pygame.Rect(
-                                (e.rect.centerx - math.cos(e.angle) * 5, e.rect.centery - math.sin(angle) * 5),
+                                (e.rect.centerx - math.cos(e.shieldangle) * 5, e.rect.centery - math.sin(e.shieldangle) * 5),
                                 (3, 3))
                             if not rect.collidepoint(point):
                                 e.kill()
@@ -419,8 +422,10 @@ def main():
                                 new_enemy = Enemy(i + 128 / 2, j - 32, "shield")
                             elif num < 95:
                                 new_enemy = Enemy(i + 128 / 2, j - 32, "ranged")
-                            else:
+                            elif num < 99:
                                 new_enemy = Enemy(i + 128 / 2, j - 32, "boss")
+                            else:
+                                new_enemy = Enemy(i + 128 / 2, j - 32, "ultra")
                             enemy_group.add(new_enemy)
             new_level = False
 
@@ -428,7 +433,7 @@ def main():
         enemy_bullet_group.draw(SCREEN)
         enemy_group.draw(SCREEN)
         for e in enemy_group:
-            if e.type == "shield":
+            if e.type == "shield" or e.type == "ultra":
                 e.draw_shield(SCREEN)
         tilegroup.draw(SCREEN)
         for e in slash_group:
