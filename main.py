@@ -94,7 +94,7 @@ class Enemy(pygame.sprite.Sprite):
         self.image = pygame.Surface((32, 32))
         self.image.fill(RED)
         self.type = type
-        if type != "shield":
+        if type != "shield" or type != "ultra":
             self.cooldown_counter = 100
         else:
             self.cooldown_counter = 0
@@ -106,26 +106,29 @@ class Enemy(pygame.sprite.Sprite):
         self.friction = 0.9
         self.wait = 0
         self.angle = 0
+        self.bullet_cooldown_counter = 0
+        self.shieldangle = 0
+        self.shieldcooldowncounter = 0
 
     def update(self, player, tiles, slash_group, enemybulletgroup):
         global lose
         if self.type == "reg":
             pass
-        if self.type == "shield":
-            self.cooldown_counter -= 1
-            if self.cooldown_counter <= 0:
-                self.angle = (self.angle + 2 * math.pi / 250) % (math.pi * 2)
-                self.cooldown_counter = 1
-        if self.type == "ranged":
+        if self.type == "shield" or self.type == "ultra":
+            self.shieldcooldowncounter -= 1
+            if self.shieldcooldowncounter <= 0:
+                self.shieldangle = (self.shieldangle + 2 * math.pi / 250) % (math.pi * 2)
+                self.shieldcooldowncounter = 1
+        if self.type == "ranged" or self.type == "ultra":
             angle = math.atan2(self.rect.centery - player.rect.centery, self.rect.centerx - player.rect.centerx)
-            self.cooldown_counter -= 1
+            self.bullet_cooldown_counter -= 1
             if dist((self.rect.centerx, self.rect.centery),
-                         (player.rect.centerx, player.rect.centery)) <= 600 and self.cooldown_counter <= 0:
+                         (player.rect.centerx, player.rect.centery)) <= 600 and self.bullet_cooldown_counter <= 0:
                 new_bullet = Enemy_Bullet(self.rect.centerx, self.rect.centery, math.cos(angle) * 5,
                                           math.sin(angle) * 5)
                 enemybulletgroup.add(new_bullet)
-                self.cooldown_counter = 50
-        if self.type == "boss":
+                self.bullet_cooldown_counter = 150
+        if self.type == "boss" or self.type == "ultra":
             self.wait -= 1
             self.angle = math.atan2(player.rect.centery - self.rect.centery, self.rect.centerx - player.rect.centerx)
             if self.wait > 1 and self.wait < 10:
@@ -146,7 +149,7 @@ class Enemy(pygame.sprite.Sprite):
                     if player.rect.collidepoint(point):
                         player.kill()
                         lose = True
-                self.cooldown_counter = 25
+                self.cooldown_counter = 50
             self.cooldown_counter -= 1
             if self.wait <= 0 and dist((self.rect.centerx, self.rect.centery), (player.rect.centerx, player.rect.centery)) <= 200 and self.cooldown_counter <= 0:
                 self.wait = 10
@@ -203,7 +206,7 @@ class Enemy(pygame.sprite.Sprite):
         image = pygame.Surface((20, 20))
         image.fill(WHITE)
         img_rect = pygame.Rect(
-            (self.rect.centerx - math.cos(self.angle) * 50 - 10, self.rect.centery - math.sin(self.angle) * 50 - 10),
+            (self.rect.centerx - math.cos(self.shieldangle) * 50 - 10, self.rect.centery - math.sin(self.shieldangle) * 50 - 10),
             (20, 20))
         screen.blit(image, img_rect)
 
@@ -244,24 +247,24 @@ class Player(pygame.sprite.Sprite):
             slash_group.add(new_slash)
             self.rect.centerx -= math.cos(angle) * 300
             self.rect.centery -= math.sin(angle) * 300
-            for i in range(0, 300, 10):
+            blocked = False
+            for i in range(0, 300, 5):
                 point = ((self.rect.centerx + math.cos(angle) * 300) - math.cos(angle) * i, (self.rect.centery + math.sin(angle) * 300) - math.sin(angle) * i)
                 for e in enemy_group:
-                    if e.rect.collidepoint(point):
-                        if e.type == "shield":
-                            rect = pygame.Rect(
-                                (e.rect.centerx - math.cos(e.angle) * 5, e.rect.centery - math.sin(angle) * 5),
-                                (3, 3))
-                            if not rect.collidepoint(point):
-                                e.kill()
-                                killed = True
-                        else:
-                            e.kill()
-                            killed = True
+                    if e.type == "shield" or e.type == "ultra":
+                        rect = pygame.Rect(
+                            (e.rect.centerx - math.cos(e.shieldangle) * 50 - 10,
+                             e.rect.centery - math.sin(e.shieldangle) * 50 - 10),
+                            (20, 20))
+                        if rect.collidepoint(point):
+                            blocked = True
+                    if e.rect.collidepoint(point) and not blocked:
+                        e.kill()
+                        killed = True
             if not killed:
-                self.cooldown_counter = 0
+                self.cooldown_counter = 100
             else:
-                self.cooldown_counter = 0
+                self.cooldown_counter = 10
 
         keys = pygame.key.get_pressed()
 
@@ -329,7 +332,7 @@ def main():
     enemy_bullet_group = pygame.sprite.Group()
 
     level = 0
-    chance = 100
+    chance = 200
 
     font = pygame.font.Font("fonts/fourside.ttf", 75)
     font2 = pygame.font.Font("fonts/fourside.ttf", 35)
@@ -365,7 +368,7 @@ def main():
     while True:
         if lose:
             lose = False
-            oldtime += pygame.time.get_ticks()
+            oldtime += pygame.time.get_ticks() - oldtime
             main()
             return 0
         SCREEN.fill(BLACK)
@@ -394,7 +397,7 @@ def main():
                 e.kill()
             if level == 10:
                 print((pygame.time.get_ticks() - oldtime)/1000)
-                oldtime = pygame.time.get_ticks()
+                oldtime = pygame.time.get_ticks() - oldtime
                 main()
             level += 1
             if chance > 5:
@@ -402,33 +405,39 @@ def main():
             for i in tilegroup:
                 if not i.amongus:
                     i.kill()
-            for i in range(32, WIDTH - 128, 32):
-                for j in range(128, HEIGHT, 32):
-                    if random.randint(1, chance) == 1:
-                        placeable = True
-                        for e in enemy_group:
-                            if math.sqrt((e.rect.centerx - i + 128/2) ** 2 + (e.rect.centerx - i + 128/2) ** 2) <= 100:
-                                placeable = False
-                        if placeable:
-                            new_tile = Tile(i, j, 128, False)
-                            tilegroup.add(new_tile)
-                            num = random.randrange(1, 100)
-                            if num < 40:
-                                new_enemy = Enemy(i + 128/2, j - 32, "reg")
-                            elif num < 70:
-                                new_enemy = Enemy(i + 128 / 2, j - 32, "shield")
-                            elif num < 95:
-                                new_enemy = Enemy(i + 128 / 2, j - 32, "ranged")
-                            else:
-                                new_enemy = Enemy(i + 128 / 2, j - 32, "boss")
-                            enemy_group.add(new_enemy)
+            if not level % 5 == 0:
+                for i in range(128, WIDTH - 128, 32):
+                    for j in range(128, HEIGHT, 32):
+                        if random.randint(1, chance) == 1:
+                            placeable = True
+                            for e in enemy_group:
+                                if math.sqrt((e.rect.centerx - i + 128/2) ** 2 + (e.rect.centerx - i + 128/2) ** 2) <= 100:
+                                    placeable = False
+                            if placeable:
+                                new_tile = Tile(i, j, 128, False)
+                                tilegroup.add(new_tile)
+                                num = random.randrange(1, 100)
+                                if num < 20:
+                                    new_enemy = Enemy(i + 128/2, j - 32, "reg")
+                                elif num < 50:
+                                    new_enemy = Enemy(i + 128 / 2, j - 32, "shield")
+                                elif num < 85:
+                                    new_enemy = Enemy(i + 128 / 2, j - 32, "ranged")
+                                else:
+                                    new_enemy = Enemy(i + 128 / 2, j - 32, "boss")
+                                enemy_group.add(new_enemy)
+            else:
+                new_enemy = Enemy(WIDTH/2, HEIGHT/2, "ultra")
+                new_tile = Tile(WIDTH/2 - 128/2, j, 128 + 32, False)
+                tilegroup.add(new_tile)
+                enemy_group.add(new_enemy)
             new_level = False
 
         player.draw()
         enemy_bullet_group.draw(SCREEN)
         enemy_group.draw(SCREEN)
         for e in enemy_group:
-            if e.type == "shield":
+            if e.type == "shield" or e.type == "ultra":
                 e.draw_shield(SCREEN)
         tilegroup.draw(SCREEN)
         for e in slash_group:
